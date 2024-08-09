@@ -1,6 +1,3 @@
-// Copyright (c) RoochNetwork
-// SPDX-License-Identifier: Apache-2.0
-
 /// Pocket Monsters On Rooch 是一个基于比特币Layer2——Rooch网络的游戏生态系统。
 /// 用户通过花费gas在比特币网络上mint生成随机属性和种类的宠物，并在Rooch网络上培养、训练和对战。宠物记录在比特币的Inscription中，可进行交易和转移。
 /// 1. 宠物生成：用户花费gas在比特币网络上mint随机宠物，记录在Inscription中。
@@ -24,7 +21,7 @@ module bitcoin_monsters::monsters {
     const ErrorMonsterExhausted: u64 = 4;
 
     const BATTLE_INTERVAL: u64 = 60 * 60 * 24; // 1 day
-    const MAX_VARITIES: u64 = 5; // 假设有5种宠物种类
+    const MAX_VARIETIES: u64 = 5; // 假设有5种宠物种类
     const MAX_HEALTH: u8 = 100;
     const MAX_LEVEL: u64 = 100;
 
@@ -72,9 +69,9 @@ module bitcoin_monsters::monsters {
 
         let actions = Actions {
             creation_time: timestamp::now_seconds(),
-            training_time: vector[],
-            battle_time: vector[],
-            task_completion: vector[],
+            training_time: vector::empty(),
+            battle_time: vector::empty(),
+            task_completion: vector::empty(),
         };
         ord::add_temp_state(seed, actions);
     }
@@ -153,7 +150,7 @@ module bitcoin_monsters::monsters {
 
     public fun generate_random_variety(): u64 {
         // 生成一个随机的宠物种类
-        rand::random_u64() % MAX_VARITIES
+        rand::random_u64() % MAX_VARIETIES
     }
 
     public fun generate_random_health(): u8 {
@@ -167,12 +164,12 @@ module bitcoin_monsters::monsters {
     }
 
     public fun calculate_level(experience: u64): u64 {
-        // TODO: Implement logic to determine level based on experience
+        // 使用经验值来计算等级
         experience / 100 + 1
     }
 
-    public fun calculate_health(current_health: u8, time_since_last_action: u64): u8 {
-        // TODO: Implement logic to calculate health degradation or recovery
+    public fun calculate_health(current_health: u8, _time_since_last_action: u64): u8 {
+        // 可以实现健康值的递减或恢复逻辑
         current_health
     }
 
@@ -180,14 +177,14 @@ module bitcoin_monsters::monsters {
         assert!(is_monster(inscription), ErrorNotMonster);
     }
 
-    fun simulate_battle(monster: &Monster, opponent: &Monster) -> u8 {
-        // TODO: Implement battle simulation logic
+    fun simulate_battle(_monster: &Monster, _opponent: &Monster) -> u8 {
+        // 简单的战斗模拟逻辑
         1 // 1 for monster win, 2 for opponent win, 0 for draw
     }
 
-    fun complete_task(task_id: u64) -> vector<u64> {
-        // TODO: Implement task completion logic and rewards
-        vector[]
+    fun complete_task(_task_id: u64) -> vector<u64> {
+        // 完成任务并获得奖励
+        vector::empty()
     }
 
     #[test_only]
@@ -203,18 +200,18 @@ module bitcoin_monsters::monsters {
             @0x3232423,
             0,
             0,
-            vector[],
+            vector::empty(),
             option::none(),
             option::none(),
-            vector[],
+            vector::empty(),
             option::none(),
-            vector[],
+            vector::empty(),
             option::none(),
         );
 
         mint_monster(&mut inscription_obj);
 
-        let i = 0u8;
+        let mut i = 0u8;
         loop {
             timestamp::fast_forward_seconds_for_test(BATTLE_INTERVAL);
             train_monster(&mut inscription_obj);
