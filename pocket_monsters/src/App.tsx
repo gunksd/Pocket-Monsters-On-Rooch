@@ -10,9 +10,9 @@ import {
 
 import { Transaction } from "@roochnetwork/rooch-sdk";
 
-// Your publish counter contract address
-const devCounterAddress = ""
-const devCounterModule = `${devCounterAddress}::counter`;
+// Your publish Monster contract address
+const devMonsterAddress = "0xc884e7019d1f68755ea944efbae61f2292b25c4257ef90bbea61ec1ac4b45e36"
+const devMonsterModule = `${devMonsterAddress}::Monster`;
 
 function App() {
   const wallets = useWallets();
@@ -25,7 +25,7 @@ function App() {
   const { mutateAsync: createSessionKey } = useCreateSessionKey();
 
   let {data, error, isPending, refetch} = useRoochClientQuery("executeViewFunction", {
-    target: `${devCounterModule}::value`,
+    target: `${devMonsterModule}::value`,
   })
 
   const handlerCreateSessionKey = () => {
@@ -36,7 +36,7 @@ function App() {
     setSessionLoading(true)
 
     const defaultScopes = [
-      `${devCounterAddress}::*::*`,
+      `${devMonsterAddress}::*::*`,
     ]
     createSessionKey(
       {
@@ -47,7 +47,32 @@ function App() {
     ).finally(() => setSessionLoading(false))
   }
 
-  const handlerIncrease = async () => {
+  const handlerTrainMonsters = async () => {
+    if (loading) {
+      return;
+    }
+  
+    setLoading(true);
+  
+    const tx = new Transaction();
+    tx.callFunction({
+      target: `${devMonsterModule}::train_monster`, 
+    });
+  
+    const result = await client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: sessionKey!,
+    });
+  
+    if (result.execution_info.status.type !== 'executed') {
+      console.log('train monsters failed');
+    }
+  
+    await refetch();
+    setLoading(false);
+  }
+
+  const handlerMint = async () => {
     if (loading) {
       return
     }
@@ -56,7 +81,7 @@ function App() {
 
     const tx = new Transaction()
     tx.callFunction({
-      target: `${devCounterModule}::increase`
+      target: `${devMonsterModule}::mint_monster`
     })
 
     const result = await client.signAndExecuteTransaction({
@@ -65,7 +90,7 @@ function App() {
     })
 
     if (result.execution_info.status.type !== 'executed') {
-      console.log('increase failed')
+      console.log('mint monsters failed');
     }
 
     await refetch()
@@ -84,7 +109,7 @@ function App() {
         }}
       >
         <Box>
-          <Heading>dApp Counter Template</Heading>
+          <Heading>dApp Monster Template</Heading>
         </Box>
 
         {wallets.length === 0
@@ -125,23 +150,31 @@ function App() {
           <Text style={{wordWrap: "break-word"}}>{sessionKey?.getRoochAddress()?.toStr()}</Text>
         </Box>
 
-        <Heading size="3" mt="6">{sessionKey ? "Counter" : "Create session key"}</Heading>
+        <Heading size="3" mt="6">{sessionKey ? "Monster" : "Create session key"}</Heading>
 
-        {devCounterAddress.length !== 0 ?
+        {devMonsterAddress.length !== 0 ?
           <Flex direction="column" gap="2">
             {sessionKey ? (
               <Text>
-                {isPending ? "loading..." : error ? "counter module not published" : `${data?.return_values?.[0]?.decoded_value}`}
+                {isPending ? "loading..." : error ? "Monster module not published" : `${data?.return_values?.[0]?.decoded_value}`}
               </Text>
             ) : null}
             <Flex direction="row" gap="2" mt="2">
               {
                 <Button
                   disabled={loading || sessionLoading}
-                  onClick={sessionKey ? handlerIncrease : handlerCreateSessionKey}
+                  onClick={sessionKey ? handlerMint : handlerCreateSessionKey}
                 >
-                  {sessionKey ? "Increment" : "Create"}
+                  {sessionKey ? "Mint monster" : "Create"}
                 </Button>
+              }
+              {
+                <Button
+                disabled={loading || sessionLoading}
+                onClick={sessionKey ? handlerTrainMonsters : handlerCreateSessionKey}
+              >
+                {sessionKey ? "Train Monsters" : "Create"}
+              </Button>
               }
             </Flex>
           </Flex>
@@ -149,7 +182,7 @@ function App() {
             <Box>
             <Text>Please refer to the contract published by readme before trying again.</Text>
             </Box>
-            <Text>If you have published a contract, enter the contract address correctly into devCounterAddress.</Text>
+            <Text>If you have published a contract, enter the contract address correctly into devMonsterAddress.</Text>
           </>
 
         }

@@ -1,0 +1,28 @@
+---
+compiled_package_info:
+  package_name: pocket_monsters_contract
+  address_alias_instantiation:
+    bitcoin_monsters: c884e7019d1f68755ea944efbae61f2292b25c4257ef90bbea61ec1ac4b45e36
+    bitcoin_move: "0000000000000000000000000000000000000000000000000000000000000004"
+    moveos_std: "0000000000000000000000000000000000000000000000000000000000000002"
+    rooch_framework: "0000000000000000000000000000000000000000000000000000000000000003"
+    std: "0000000000000000000000000000000000000000000000000000000000000001"
+    vm_reserved: "0000000000000000000000000000000000000000000000000000000000000000"
+  source_digest: 5E5EF57B736C999A789638378136A800A23A7FFFE67F8A91626DE4D9389573FF
+  build_flags:
+    dev_mode: false
+    test_mode: false
+    generate_docs: false
+    generate_abis: false
+    install_dir: ~
+    force_recompilation: false
+    additional_named_addresses: {}
+    architecture: ~
+    fetch_deps_only: false
+    skip_fetch_latest_git_deps: false
+    bytecode_version: ~
+dependencies:
+  - BitcoinMove
+  - MoveStdlib
+  - MoveosStdlib
+  - RoochFramework

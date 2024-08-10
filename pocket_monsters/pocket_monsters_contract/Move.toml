@@ -6,9 +6,14 @@ version = "0.0.1"
 MoveStdlib = { git = "https://github.com/rooch-network/rooch.git", subdir = "frameworks/move-stdlib", rev = "main" }
 MoveosStdlib = { git = "https://github.com/rooch-network/rooch.git", subdir = "frameworks/moveos-stdlib", rev = "main" }
 RoochFramework = { git = "https://github.com/rooch-network/rooch.git", subdir = "frameworks/rooch-framework", rev = "main" }
+BitcoinMove = { git = "https://github.com/rooch-network/rooch.git", subdir = "frameworks/bitcoin-move", rev = "main" }
 
 [addresses]
-pocket_monsters_contract = "0xc884e7019d1f68755ea944efbae61f2292b25c4257ef90bbea61ec1ac4b45e36"
+bitcoin_monsters = "0xc884e7019d1f68755ea944efbae61f2292b25c4257ef90bbea61ec1ac4b45e36"
 std = "0x1"
 moveos_std = "0x2"
 rooch_framework = "0x3"
+bitcoin_move = "0x4"
+
+[dev-addresses]
+bitcoin_monsters = "0x42"
