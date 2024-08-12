@@ -1,193 +1,352 @@
-import { useState } from "react";
-import { Box, Button, Container, Flex, Heading, Text } from "@radix-ui/themes";
+
+import { LoadingButton } from "@mui/lab";
+import { Button, Chip, Divider, Stack, Typography } from "@mui/material";
+import { Args, Transaction } from "@roochnetwork/rooch-sdk";
 import {
+  UseSignAndExecuteTransaction,
+  useConnectWallet,
+  useCreateSessionKey,
+  useCurrentAddress,
   useCurrentSession,
+  useRemoveSession,
+  useRoochClientQuery,
+  useWalletStore,
   useWallets,
-  useRoochClientQuery, useConnectWallet, useCreateSessionKey,
-  useRoochClient,
-  useCurrentWallet
 } from "@roochnetwork/rooch-sdk-kit";
+import { useState } from "react";
+import "./App.css";
+import { shortAddress } from "./utils";
 
-import { Transaction } from "@roochnetwork/rooch-sdk";
-
-// Your publish Monster contract address
-const devMonsterAddress = "0xc884e7019d1f68755ea944efbae61f2292b25c4257ef90bbea61ec1ac4b45e36"
-const devMonsterModule = `${devMonsterAddress}::Monster`;
+// Publish address of the counter contract
+const counterAddress = "0xc884e7019d1f68755ea944efbae61f2292b25c4257ef90bbea61ec1ac4b45e36";
 
 function App() {
   const wallets = useWallets();
-  const client = useRoochClient();
+  const currentAddress = useCurrentAddress();
   const sessionKey = useCurrentSession();
-  const { isConnected, status, wallet } = useCurrentWallet();
-  const [ loading, setLoading ] = useState(false);
-  const [ sessionLoading, setSessionLoading ] = useState(false);
+  const connectionStatus = useWalletStore((state) => state.connectionStatus);
+  const setWalletDisconnected = useWalletStore(
+    (state) => state.setWalletDisconnected
+  );
   const { mutateAsync: connectWallet } = useConnectWallet();
+
   const { mutateAsync: createSessionKey } = useCreateSessionKey();
-
-  let {data, error, isPending, refetch} = useRoochClientQuery("executeViewFunction", {
-    target: `${devMonsterModule}::value`,
-  })
-
-  const handlerCreateSessionKey = () => {
+  const { mutateAsync: removeSessionKey } = useRemoveSession();
+  const { mutateAsync: signAndExecuteTransaction } =
+    UseSignAndExecuteTransaction();
+  const { data, refetch } = useRoochClientQuery("executeViewFunction", {
+    target: `${counterAddress}::bitcoin_monsters::Monster`,
+  });
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [txnLoading, setTxnLoading] = useState(false);
+  const handlerCreateSessionKey = async () => {
     if (sessionLoading) {
-      return
-    }
-
-    setSessionLoading(true)
-
-    const defaultScopes = [
-      `${devMonsterAddress}::*::*`,
-    ]
-    createSessionKey(
-      {
-        appName: "rooch_test",
-        appUrl: "https://test.com",
-        scopes: defaultScopes
-      },
-    ).finally(() => setSessionLoading(false))
-  }
-
-  const handlerTrainMonsters = async () => {
-    if (loading) {
       return;
     }
-  
-    setLoading(true);
-  
-    const tx = new Transaction();
-    tx.callFunction({
-      target: `${devMonsterModule}::train_monster`, 
-    });
-  
-    const result = await client.signAndExecuteTransaction({
-      transaction: tx,
-      signer: sessionKey!,
-    });
-  
-    if (result.execution_info.status.type !== 'executed') {
-      console.log('train monsters failed');
-    }
-  
-    await refetch();
-    setLoading(false);
-  }
+    setSessionLoading(true);
 
-  const handlerMint = async () => {
-    if (loading) {
-      return
-    }
-
-    setLoading(true)
-
-    const tx = new Transaction()
-    tx.callFunction({
-      target: `${devMonsterModule}::mint_monster`
-    })
-
-    const result = await client.signAndExecuteTransaction({
-      transaction: tx,
-      signer: sessionKey!
-    })
-
-    if (result.execution_info.status.type !== 'executed') {
-      console.log('mint monsters failed');
-    }
-
-    await refetch()
-    setLoading(false)
-  }
+    const defaultScopes = [`${counterAddress}::*::*`];
+    createSessionKey(
+      {
+        appName: "rooch_monster",
+        appUrl: "http://localhost:5173",
+        maxInactiveInterval: 1000,
+        scopes: defaultScopes,
+      },
+      {
+        onSuccess: (result) => {
+          console.log("session key", result);
+        },
+        onError: (why) => {
+          console.log(why);
+        },
+      }
+    ).finally(() => setSessionLoading(false));
+  };
 
   return (
-    <>
-      <Flex
-        position="sticky"
-        px="4"
-        py="2"
-        justify="between"
-        style={{
-          borderBottom: "1px solid var(--gray-a2)"
-        }}
-      >
-        <Box>
-          <Heading>dApp Monster Template</Heading>
-        </Box>
-
-        {wallets.length === 0
-          ? "Please install the wallet and try again"
-          : isConnected ? status : (
-              <Box>
-                <Button
-                  onClick={async () => {
-                    await connectWallet({
-                      wallet: wallets[0],
-                    });
-                  }}>
-                  Connect Wallet
-                </Button>
-              </Box>
-            )
-        }
-      </Flex>
-
-      <Container
-        mt="5"
-        pt="2"
-        px="4"
-        style={{background: "var(--gray-a2)", minHeight: 500}}
-      >
-        <Box mt="2">
-          <Text style={{fontWeight: "bold"}}>Address: </Text>
-          <Text style={{wordWrap: "break-word"}}>{wallet?.getBitcoinAddress().toStr()}</Text>
-        </Box>
-
-        <Box mt="4">
-          <Text style={{fontWeight: "bold"}}>PublicKey: </Text>
-          <Text style={{wordWrap: "break-word"}}>{wallet?.getPublicKey().toString()}</Text>
-        </Box>
-
-        <Box mt="4">
-          <Text style={{fontWeight: "bold"}}>Session Address: </Text>
-          <Text style={{wordWrap: "break-word"}}>{sessionKey?.getRoochAddress()?.toStr()}</Text>
-        </Box>
-
-        <Heading size="3" mt="6">{sessionKey ? "Monster" : "Create session key"}</Heading>
-
-        {devMonsterAddress.length !== 0 ?
-          <Flex direction="column" gap="2">
-            {sessionKey ? (
-              <Text>
-                {isPending ? "loading..." : error ? "Monster module not published" : `${data?.return_values?.[0]?.decoded_value}`}
-              </Text>
-            ) : null}
-            <Flex direction="row" gap="2" mt="2">
-              {
-                <Button
-                  disabled={loading || sessionLoading}
-                  onClick={sessionKey ? handlerMint : handlerCreateSessionKey}
-                >
-                  {sessionKey ? "Mint monster" : "Create"}
-                </Button>
+    <Stack
+      className="font-sans min-w-[1024px]"
+      direction="column"
+      sx={{
+        minHeight: "calc(100vh - 4rem)",
+      }}
+    >
+      <Stack justifyContent="space-between" className="w-full">
+        <img src="./rooch_black_combine.svg" width="120px" alt="" />
+        <Stack spacing={1} justifyItems="flex-end">
+          <Chip
+            label="Rooch Testnet"
+            variant="filled"
+            className="font-semibold !bg-slate-950 !text-slate-50 min-h-10"
+          />
+          <Button
+            variant="outlined"
+            onClick={async () => {
+              if (connectionStatus === "connected") {
+                setWalletDisconnected();
+                return;
               }
-              {
-                <Button
-                disabled={loading || sessionLoading}
-                onClick={sessionKey ? handlerTrainMonsters : handlerCreateSessionKey}
-              >
-                {sessionKey ? "Train Monsters" : "Create"}
-              </Button>
-              }
-            </Flex>
-          </Flex>
-          : <>
-            <Box>
-            <Text>Please refer to the contract published by readme before trying again.</Text>
-            </Box>
-            <Text>If you have published a contract, enter the contract address correctly into devMonsterAddress.</Text>
-          </>
+              await connectWallet({ wallet: wallets[0] });
+            }}
+          >
+            {connectionStatus === "connected"
+              ? shortAddress(currentAddress?.genRoochAddress().toStr(), 8, 6)
+              : "Connect Wallet"}
+          </Button>
+        </Stack>
+      </Stack>
+      <Typography className="text-4xl font-semibold mt-6 text-left w-full mb-4">
+        ROOCH Monster | <span className="text-2xl">Pokemon</span>
+      </Typography>
+      <Divider className="w-full" />
+      <Stack
+        direction="column"
+        className="mt-4 font-medium font-serif w-full text-left"
+        spacing={2}
+        alignItems="flex-start"
+      >
+        <Typography className="text-xl">
+          Rooch Address:{" "}
+          <span className="underline tracking-wide underline-offset-8 ml-2">
+            {currentAddress?.genRoochAddress().toStr()}
+          </span>
+        </Typography>
+        <Typography className="text-xl">
+          Hex Address:
+          <span className="underline tracking-wide underline-offset-8 ml-2">
+            {currentAddress?.genRoochAddress().toHexAddress()}
+          </span>
+        </Typography>
+        <Typography className="text-xl">
+          Bitcoin Address:
+          <span className="underline tracking-wide underline-offset-8 ml-2">
+            {currentAddress?.toStr()}
+          </span>
+        </Typography>
+      </Stack>
+      <Divider className="w-full !mt-12" />
+      <Stack
+        className="mt-4 w-full font-medium "
+        direction="column"
+        alignItems="flex-start"
+      >
+        <Typography className="text-3xl font-bold">Session Key</Typography>
+        {/* <Typography className="mt-4">
+          Status: Session Key not created
+        </Typography> */}
+        <Stack
+          className="mt-4 text-left"
+          spacing={2}
+          direction="column"
+          alignItems="flex-start"
+        >
+          <Typography className="text-xl">
+            Session Rooch address:{" "}
+            <span className="underline tracking-wide underline-offset-8 ml-2">
+              {sessionKey?.getRoochAddress().toStr()}
+            </span>
+          </Typography>
+          <Typography className="text-xl">
+            Key scheme:{" "}
+            <span className="underline tracking-wide underline-offset-8 ml-2">
+              {sessionKey?.getKeyScheme()}
+            </span>
+          </Typography>
+          <Typography className="text-xl">
+            Create time:{" "}
+            <span className="underline tracking-wide underline-offset-8 ml-2">
+              {sessionKey?.getCreateTime()}
+            </span>
+          </Typography>
+        </Stack>
+        {!sessionKey ? (
+          <LoadingButton
+            loading={sessionLoading}
+            variant="contained"
+            className="!mt-4"
+            disabled={connectionStatus !== "connected"}
+            onClick={() => {
+              handlerCreateSessionKey();
+            }}
+          >
+            {connectionStatus !== "connected"
+              ? "Please connect wallet first"
+              : "Create"}
+          </LoadingButton>
+        ) : (
+          <Button
+            variant="contained"
+            className="!mt-4"
+            onClick={() => {
+              removeSessionKey({ authKey: sessionKey.getAuthKey() });
+            }}
+          >
+            Clear Session
+          </Button>
+        )}
+      </Stack>
+      <Divider className="w-full !mt-12" />
+      <Stack
+        className="mt-4 w-full font-medium "
+        direction="column"
+        alignItems="flex-start"
+      >
+        <Typography className="text-3xl font-bold">
+          dApp integration
+          <span className="text-base font-normal ml-4">({counterAddress})</span>
+        </Typography>
+        <Stack
+          className="mt-4"
+          spacing={2}
+          direction="column"
+          alignItems="flex-start"
+        >
+          <Typography className="text-xl">
+          <LoadingButton
+            loading={txnLoading}
+            variant="contained"
+            fullWidth
+            disabled={!sessionKey}
+            onClick={async () => {
+              try {
+                setTxnLoading(true);
+                const txn = new Transaction();
+                txn.callFunction({
+                  address: counterAddress,
+                  module: "monsters",
+                  function: "get_monster_permanent_state",
+                  args: [Args.u256(ObjectID)],
+                }),
+                    await signAndExecuteTransaction({ transaction: txn });
+                    await refetch();
+                  } catch (error) {
+                    console.error(String(error));
+                  } finally {
+                    setTxnLoading(false);
+                  }
+                }}
+          >
+            {sessionKey
+              ? "monster data"
+              : "Please create Session Key first"}
+          </LoadingButton>
+            Monster data:
+            <div className="ml-2">
+              
+              {data?.return_values?.[0] && (
+                <>
+                  <Typography>Variety: </Typography>
+                  <Typography>Level: </Typography>
+                  <Typography>Experience: </Typography>
+                  <Typography>Health: </Typography>
+                  <Typography>
+                    Last Training Time:{" "}
+                  .toLocaleString()
+                  </Typography>
+                  <Typography>Wins: </Typography>
+                  <Typography>Losses: </Typography>
+                  <Typography>Achievement: </Typography>
+                </>
+              )}
+              {!data?.return_values?.[0] && (
+                <Typography>No monster data available.</Typography>
+              )}
+            </div>
+          </Typography>
 
+          <LoadingButton
+            loading={txnLoading}
+            variant="contained"
+            fullWidth
+            disabled={!sessionKey}
+            onClick={async () => {
+              try {
+                setTxnLoading(true);
+                const txn = new Transaction();
+                txn.callFunction({
+                  address: counterAddress,
+                  module: "monsters",
+                  function: "mint_monster",
+                  args: [],
+                }),
+                    await signAndExecuteTransaction({ transaction: txn });
+                    await refetch();
+                  } catch (error) {
+                    console.error(String(error));
+                  } finally {
+                    setTxnLoading(false);
+                  }
+                }}
+          >
+            {sessionKey
+              ? "Mint monster"
+              : "Please create Session Key first"}
+          </LoadingButton>
+
+            {/* Train Monster Button */}
+    <LoadingButton
+      loading={txnLoading}
+      variant="contained"
+      fullWidth
+      disabled={!sessionKey}
+      onClick={async () => {
+        try {
+          setTxnLoading(true);
+          const txn = new Transaction();
+          txn.callFunction({
+            address: counterAddress,
+            module: "monsters",
+            function: "train_monster",
+            args: [],
+          });
+          const result = await signAndExecuteTransaction({ transaction: txn });
+
+          // Assuming the result contains the return data
+          const mintedMonsterData = result as unknown as string;
+          console.log("Minted Monster Data:", mintedMonsterData);
+          await signAndExecuteTransaction({ transaction: txn });
+          await refetch();
+        } catch (error) {
+          console.error(String(error));
+        } finally {
+          setTxnLoading(false);
         }
-      </Container>
-    </>
+      }}
+    >
+      {sessionKey ? "Train monster" : "Please create Session Key first"}
+    </LoadingButton>
+
+    {/* Harvest Monster Button */}
+    <LoadingButton
+      loading={txnLoading}
+      variant="contained"
+      fullWidth
+      disabled={!sessionKey}
+      onClick={async () => {
+        try {
+          setTxnLoading(true);
+          const txn = new Transaction();
+          txn.callFunction({
+            address: counterAddress,
+            module: "monsters",
+            function: "harvest_monster",
+            args: [],
+          });
+          await signAndExecuteTransaction({ transaction: txn });
+          await refetch();
+        } catch (error) {
+          console.error(String(error));
+        } finally {
+          setTxnLoading(false);
+        }
+      }}
+    >
+      {sessionKey ? "Harvest monster" : "Please create Session Key first"}
+    </LoadingButton>
+        </Stack>
+      </Stack>
+    </Stack>
   );
 }
 

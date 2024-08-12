@@ -16,6 +16,7 @@ module bitcoin_monsters::monsters {
     const MAX_VARIETIES: u64 = 5;
     const MAX_HEALTH: u8 = 100;
     const MAX_LEVEL: u64 = 100;
+    const Monster_egg_Rarity: u8 = 1;
 
     /// Basic attributes of pets
     struct Monster has store {
@@ -28,10 +29,7 @@ module bitcoin_monsters::monsters {
         losses: u64,
         achievement: u64,
     }
-    struct Monster_egg has key, store {
-        variety:u64,
-        Rarity:u8,
-    }
+    
     /// User operations on pets
     struct Actions has store, copy, drop {
         creation_time: u64,
@@ -42,14 +40,12 @@ module bitcoin_monsters::monsters {
     fun init() {}
 
     ///mint new monsters
-    public entry fun mint_monster(monster_egg: &mut Object<Inscription>) {
-        let inscription = object::borrow(monster_egg);
+    public entry fun mint_monster(monster_egg_Rarity: &mut Object<Inscription>) {
+        let inscription = object::borrow(monster_egg_Rarity);
         ensure_monster_inscription(inscription);
-
-        assert!(!ord::contains_permanent_state<Monster>(monster_egg), ErrorAlreadycreated);
-        
+        assert!(!ord::contains_permanent_state<Monster>(monster_egg_Rarity), ErrorAlreadycreated);
         let monster = Monster {
-            variety: generate_random_variety(),
+            variety: 5,
             level: 1,
             experience: 0,
             health: 100,
@@ -59,14 +55,15 @@ module bitcoin_monsters::monsters {
             achievement:0,
         };
 
-        ord::add_permanent_state(monster_egg, monster);
+        ord::add_permanent_state(monster_egg_Rarity, monster);
 
         let actions = Actions {
             creation_time: timestamp::now_seconds(),
             training_time: vector::empty(),
             task_completion: vector::empty(),
         };
-        ord::add_temp_state(monster_egg, actions);
+        ord::add_temp_state(monster_egg_Rarity, actions);
+
     }
 
     /// train monster
@@ -94,7 +91,7 @@ public entry fun battle(monster: &mut Object<Inscription>, opponent: &mut Object
 
     assert!(monster_data.health > 0 && opponent_data.health > 0, ErrorMonsterExhausted);
 
-    let now = timestamp::now_seconds();
+    let _now = timestamp::now_seconds();
    
     // Simulate the battle outcome (simple logic for demonstration)
     let outcome = simulate_battle(monster_data, opponent_data);
@@ -106,7 +103,7 @@ public entry fun battle(monster: &mut Object<Inscription>, opponent: &mut Object
     opponent_data.wins = opponent_data.wins + 1;
     };
 
-    let actions = ord::borrow_mut_temp_state<Actions>(monster);
+    let _actions = ord::borrow_mut_temp_state<Actions>(monster);
 }
 
 public fun do_task(monster: &mut Object<Inscription>, task_id: u64): vector<u64> {
@@ -124,13 +121,6 @@ public fun do_task(monster: &mut Object<Inscription>, task_id: u64): vector<u64>
 public fun is_monster(_inscription: &Inscription): bool {
     // TODO: Parse the Inscription content and check if it is a valid Monster
     true
-}
-
-public fun generate_random_variety(): u64 {
-    // generate random variety from 1-5
-    let current_time = timestamp::now_seconds(); 
-    let random_number = (current_time % MAX_VARIETIES) + 1;  
-    random_number
 }
 
 public fun calculate_experience_gain(): u64 {
@@ -156,6 +146,14 @@ public fun calculate_health(current_health: u8, _time_since_last_action: u64): u
     } else {
         new_health
     }
+}
+
+public fun get_monster_permanent_state(monster: &Object<Inscription>): &Monster {
+    ord::borrow_permanent_state<Monster>(monster)
+}
+
+public fun get_monster_temp_state(monster: &Object<Inscription>): &Actions {
+    ord::borrow_temp_state<Actions>(monster)
 }
 
 fun ensure_monster_inscription(inscription: &Inscription) {
